@@ -1,0 +1,8 @@
+name: movies_api_app
+
+include:
+  - app/docker-compose.base.yml
+
+networks:
+  movies_net:
+    external: true
