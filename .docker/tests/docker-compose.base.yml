@@ -1,0 +1,10 @@
+services:
+  tests:
+    build: ../../tests/functional
+    container_name: tests
+    env_file:
+      - ../../tests/functional/.env.test
+    depends_on:
+      - test_app
+    networks:
+      - movies_net
