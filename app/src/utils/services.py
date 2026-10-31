@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Callable, Optional, ParamSpec
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, ClassVar, Optional
 from uuid import UUID
 
 from backoff import expo, on_exception, random_jitter
@@ -21,35 +22,32 @@ if TYPE_CHECKING:
 __all__ = ("BaseService",)
 
 
-_P = ParamSpec("_P")
-
-
-class BaseService[_BaseModel: BaseModel, _ExtendedModel: BaseModel]:
+class BaseService[BaseServiceModel: BaseModel, ExtendedServiceModel: BaseModel]:
     """Базовый сервис, работающий с Redis и Elasticsearch.
     Реализует базовые методы получения из Elasticsearch
     объекта по идентификатору и списка объектов с сортировкой и фильтрацией"""
 
-    _base_model: _BaseModel | None = None
-    _extended_model: _ExtendedModel | None = None
+    _base_model: BaseServiceModel | None = None
+    _extended_model: ExtendedServiceModel | None = None
     _sort_enum: Optional["SortEnum"] = None
     _elastic_index: str | None = None
 
     search_field: str = "title"
-    filters_map: dict[str, Callable] = {}
+    filters_map: ClassVar[dict[str, Callable]] = {}
 
     def __init__(self, redis: Redis, elastic: AsyncElasticsearch) -> None:
         self.redis = redis
         self.elastic = elastic
 
     @property
-    def base_model(self) -> type[_BaseModel]:
+    def base_model(self) -> type[BaseServiceModel]:
         if self._base_model:
             return self._base_model
 
         raise ValueError(f"[{self.__class__.__name__}] Base model was not set")
 
     @property
-    def extended_model(self) -> type[_ExtendedModel]:
+    def extended_model(self) -> type[ExtendedServiceModel]:
         if self._extended_model:
             return self._extended_model
 
@@ -73,7 +71,7 @@ class BaseService[_BaseModel: BaseModel, _ExtendedModel: BaseModel]:
 
         raise ValueError(f"[{self.__class__.__name__}] Sort enum was not set")
 
-    def _get_filters(self, **filters: _P.kwargs) -> list[dict]:
+    def _get_filters(self, **filters: Any) -> list[dict]:
         """Метод для формирования общего списка выражений для добавления
         фильтрации в запрос к Elasticsearch"""
 
@@ -86,9 +84,7 @@ class BaseService[_BaseModel: BaseModel, _ExtendedModel: BaseModel]:
 
         return results
 
-    def _get_filter_conditions(
-        self, **filters: _P.kwargs
-    ) -> tuple[list[dict], ...]:
+    def _get_filter_conditions(self, **filters: Any) -> tuple[list[dict], ...]:
         """Метод для формирования списка выражений для добавления
         фильтрации в запрос к Elasticsearch и
         разделения выражений по полям запроса should и filter"""
@@ -181,7 +177,9 @@ class BaseService[_BaseModel: BaseModel, _ExtendedModel: BaseModel]:
     ) -> ObjectApiResponse:
         return await self.elastic.search(index=index, body=query)
 
-    async def _get_item_from_elastic(self, id: UUID) -> _ExtendedModel | None:
+    async def _get_item_from_elastic(
+        self, id: UUID
+    ) -> ExtendedServiceModel | None:
         """Внутренний метод для получения из Elasticsearch
         объекта по идентификатору"""
 
@@ -198,7 +196,7 @@ class BaseService[_BaseModel: BaseModel, _ExtendedModel: BaseModel]:
 
     async def _get_list_from_elastic(
         self, query: dict, is_extended: bool = False
-    ) -> list[_BaseModel | _ExtendedModel]:
+    ) -> list[BaseServiceModel | ExtendedServiceModel]:
         """Внутренний метод для получения из Elasticsearch
         списка объектов по запросу в виде словаря"""
         try:
@@ -220,7 +218,7 @@ class BaseService[_BaseModel: BaseModel, _ExtendedModel: BaseModel]:
         ]
 
     @async_redis_cache(60 * 5)
-    async def get_item(self, id: UUID) -> _ExtendedModel | None:
+    async def get_item(self, id: UUID) -> ExtendedServiceModel | None:
         """Публичный метод для получения из Elasticsearch
         объекта по идентификатору. Кешируется в Redis"""
 
@@ -234,8 +232,8 @@ class BaseService[_BaseModel: BaseModel, _ExtendedModel: BaseModel]:
         sort: str | None = None,
         search_query: str | None = None,
         is_extended: bool = False,
-        **filters: _P.kwargs,
-    ) -> list[_BaseModel | _ExtendedModel]:
+        **filters: Any,
+    ) -> list[BaseServiceModel | ExtendedServiceModel]:
         """Публичный метод для получения из Elasticsearch списка объектов
         c учётом контекстного поиска, фильтрации, сортировки и пагинации.
         Кешируется в Redis"""

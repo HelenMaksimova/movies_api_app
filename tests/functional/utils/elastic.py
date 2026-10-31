@@ -1,9 +1,9 @@
 from json import JSONDecodeError, loads
+from pathlib import Path
 
 from elasticsearch import (
     AsyncElasticsearch,
     ConnectionError,
-    Elasticsearch,
     TransportError,
 )
 from elasticsearch.helpers import async_bulk
@@ -15,17 +15,16 @@ __all__ = (
 
 
 async def create_index(
-    elastic_cli: Elasticsearch, name: str, schema_file_path: str
+    elastic_cli: AsyncElasticsearch, name: str, schema_file_path: str
 ) -> None:
     try:
-        with open(schema_file_path) as file:
-            index_map = loads(file.read())
+        index_map = loads(Path(schema_file_path).read_text())
 
         if await elastic_cli.indices.exists(index=name):
             await elastic_cli.indices.delete(index=name)
         await elastic_cli.indices.create(index=name, **index_map)
 
-    except IOError as err:
+    except OSError as err:
         raise ValueError(
             f"Schema file cannot be opened and read with error: {err}"
         )

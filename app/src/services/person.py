@@ -1,12 +1,8 @@
 from functools import lru_cache
 
-from elasticsearch import AsyncElasticsearch
-from fastapi import Depends
-from redis.asyncio import Redis
+from fastapi import Request
 
 from src.core.enums import GenreSortEnum
-from src.db.elastic import get_elastic
-from src.db.redis import get_redis
 from src.models.person import PersonDC, PersonExtendedDC
 from src.utils import BaseService
 
@@ -25,9 +21,13 @@ class PersonService(BaseService[PersonDC, PersonExtendedDC]):
     search_field = "name"
 
 
-@lru_cache()
-def get_person_service(
-    redis: Redis = Depends(get_redis),
-    elastic: AsyncElasticsearch = Depends(get_elastic),
-) -> PersonService:
+@lru_cache
+def _make_person_service(redis, elastic) -> PersonService:
     return PersonService(redis, elastic)
+
+
+def get_person_service(request: Request) -> PersonService:
+    return _make_person_service(
+        request.app.state.redis,
+        request.app.state.elastic,
+    )

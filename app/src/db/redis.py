@@ -1,6 +1,7 @@
 from logging import getLogger
 from typing import TYPE_CHECKING
 
+from fastapi import Request
 from redis.asyncio import (
     ConnectionError as RedisConnectionError,
     Redis,
@@ -13,11 +14,9 @@ if TYPE_CHECKING:
 __all__ = (
     "get_client",
     "get_redis",
-    "redis",
 )
 
 
-redis: Redis | None = None
 logger = getLogger()
 
 
@@ -34,11 +33,11 @@ async def get_client(config: "RedisConfigDC") -> Redis | None:
     try:
         await client.ping()
         logger.info("[Redis] Was connected on: %s:%s", config.host, config.port)
-    except Exception as err:
+    except (RedisConnectionError, RedisTimeoutError) as err:
         logger.error("[Redis] Was not connected with error: %s", err)
 
     return client
 
 
-async def get_redis() -> Redis | None:
-    return redis
+async def get_redis(request: Request) -> Redis | None:
+    return request.app.state.redis

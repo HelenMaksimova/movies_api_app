@@ -2,15 +2,15 @@ from http import HTTPStatus
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, HTTPException, Path, Query
 
-from src.services import FilmService, get_film_service
 from src.api.v1.schemas import (
     DetailFilmResponseSchema,
     ListFilmQuerySchema,
     ListFilmResponseSchema,
     ListSearchFilmQuerySchema,
 )
+from src.services.dependencies import DepFilmService
 
 __all__ = (
     "film_detail",
@@ -38,7 +38,7 @@ router = APIRouter()
 )
 async def film_search_list(
     query: Annotated[ListSearchFilmQuerySchema, Query()],
-    film_service: FilmService = Depends(get_film_service),
+    film_service: DepFilmService,
 ) -> Any:
     return await film_service.get_list(
         page_number=query.page_number,
@@ -61,8 +61,8 @@ async def film_search_list(
     ),
 )
 async def film_detail(
-    film_id: UUID = Path(description="Идентификатор фильма"),
-    film_service: FilmService = Depends(get_film_service),
+    film_id: Annotated[UUID, Path(description="Идентификатор фильма")],
+    film_service: DepFilmService,
 ) -> Any:
     film = await film_service.get_item(film_id)
     if not film:
@@ -88,7 +88,7 @@ async def film_detail(
 )
 async def film_list(
     query: Annotated[ListFilmQuerySchema, Query()],
-    film_service: FilmService = Depends(get_film_service),
+    film_service: DepFilmService,
 ) -> Any:
     return await film_service.get_list(
         page_number=query.page_number,

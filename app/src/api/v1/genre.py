@@ -2,14 +2,14 @@ from http import HTTPStatus
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, HTTPException, Path, Query
 
-from src.services import GenreService, get_genre_service
 from src.api.v1.schemas import (
     DetailGenreResponseSchema,
     ListGenreQuerySchema,
     ListGenreResponseSchema,
 )
+from src.services.dependencies import DepGenreService
 
 __all__ = (
     "genre_detail",
@@ -30,8 +30,8 @@ router = APIRouter()
     response_description="Название и описание жанра",
 )
 async def genre_detail(
-    genre_id: UUID = Path(description="Идентификатор жанра"),
-    genre_service: GenreService = Depends(get_genre_service),
+    genre_id: Annotated[UUID, Path(description="Идентификатор жанра")],
+    genre_service: DepGenreService,
 ) -> Any:
     genre = await genre_service.get_item(genre_id)
     if not genre:
@@ -52,7 +52,7 @@ async def genre_detail(
 )
 async def genre_list(
     query: Annotated[ListGenreQuerySchema, Query()],
-    genre_service: GenreService = Depends(get_genre_service),
+    genre_service: DepGenreService,
 ) -> Any:
     return await genre_service.get_list(
         page_number=query.page_number,

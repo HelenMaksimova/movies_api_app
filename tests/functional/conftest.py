@@ -1,7 +1,8 @@
 from asyncio import gather
+from collections.abc import AsyncGenerator
 from logging import config as log_config, getLogger
 from pathlib import Path
-from typing import Any, AsyncGenerator, ParamSpec
+from typing import Any
 
 from elasticsearch import (
     AsyncElasticsearch,
@@ -15,9 +16,6 @@ from settings import LOG_SETTINGS, test_config
 from utils.base import TestBase
 from utils.common import get_errors
 from utils.elastic import create_index
-
-_P = ParamSpec("_P")
-
 
 log_config.dictConfig(LOG_SETTINGS)
 logger = getLogger("tests")
@@ -84,7 +82,7 @@ async def elastic_cli() -> AsyncGenerator[AsyncElasticsearch, Any]:
 
 
 @fixture(scope="session", autouse=True)
-async def create_indexes(elastic_cli) -> None:
+async def create_indexes(elastic_cli: AsyncElasticsearch) -> None:
     results = await gather(
         *[
             create_index(
@@ -111,7 +109,7 @@ async def create_indexes(elastic_cli) -> None:
 
 
 @async_fixture(autouse=True)
-async def auto_clear_indexes(elastic_cli) -> None:
+async def auto_clear_indexes(elastic_cli: AsyncElasticsearch) -> None:
     results = await gather(
         *[
             elastic_cli.delete_by_query(
@@ -135,7 +133,7 @@ async def auto_clear_indexes(elastic_cli) -> None:
 
 
 @async_fixture(autouse=True)
-async def auto_clear_cache(redis_cli) -> None:
+async def auto_clear_cache(redis_cli: Redis) -> None:
     try:
         await redis_cli.flushdb()
         logger.info("Cache was cleared successfully")
