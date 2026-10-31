@@ -7,18 +7,17 @@ from elasticsearch import (
     ConnectionError as ElasticConnectionError,
     ConnectionTimeout as ElasticTimeoutError,
 )
+from fastapi import Request
 
 if TYPE_CHECKING:
     from src.core.config import ElasticConfigDC
 
 __all__ = (
-    "elastic",
     "get_client",
     "get_elastic",
 )
 
 
-elastic: AsyncElasticsearch | None = None
 logger = getLogger()
 
 
@@ -39,11 +38,11 @@ async def get_client(config: "ElasticConfigDC") -> AsyncElasticsearch | None:
 
     try:
         await _ping_client(client, config)
-    except Exception as err:
+    except (ElasticConnectionError, ElasticTimeoutError) as err:
         logger.error("[Elastic] Was not connected with error: %s", err)
 
     return client
 
 
-async def get_elastic() -> AsyncElasticsearch | None:
-    return elastic
+async def get_elastic(request: Request) -> AsyncElasticsearch | None:
+    return request.app.state.elastic

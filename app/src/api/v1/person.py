@@ -2,14 +2,8 @@ from http import HTTPStatus
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, HTTPException, Path, Query
 
-from src.services import (
-    FilmService,
-    PersonService,
-    get_film_service,
-    get_person_service,
-)
 from src.api.v1.schemas import (
     DetailPersonResponseSchema,
     ListFilmResponseSchema,
@@ -17,6 +11,7 @@ from src.api.v1.schemas import (
     ListSearchFilmQuerySchema,
     ListSearchPersonQuerySchema,
 )
+from src.services.dependencies import DepFilmService, DepPersonService
 
 __all__ = (
     "person_detail",
@@ -45,7 +40,7 @@ router = APIRouter()
 )
 async def person_search_list(
     query: Annotated[ListSearchPersonQuerySchema, Query()],
-    person_service: PersonService = Depends(get_person_service),
+    person_service: DepPersonService,
 ) -> Any:
     return await person_service.get_list(
         page_number=query.page_number,
@@ -73,8 +68,8 @@ async def person_search_list(
 )
 async def person_films_list(
     query: Annotated[ListSearchFilmQuerySchema, Query()],
-    person_id: UUID = Path(description="Идентификатор участника"),
-    film_service: FilmService = Depends(get_film_service),
+    person_id: Annotated[UUID, Path(description="Идентификатор участника")],
+    film_service: DepFilmService,
 ) -> Any:
     return await film_service.get_list(
         page_number=query.page_number,
@@ -100,8 +95,8 @@ async def person_films_list(
     ),
 )
 async def person_detail(
-    person_id: UUID = Path(description="Идентификатор участника"),
-    person_service: PersonService = Depends(get_person_service),
+    person_id: Annotated[UUID, Path(description="Идентификатор участника")],
+    person_service: DepPersonService,
 ) -> Any:
     person = await person_service.get_item(person_id)
     if not person:

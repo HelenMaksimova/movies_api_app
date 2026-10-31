@@ -1,12 +1,10 @@
+from collections.abc import Callable
 from functools import lru_cache
+from typing import ClassVar
 
-from elasticsearch import AsyncElasticsearch
-from fastapi import Depends
-from redis.asyncio import Redis
+from fastapi import Request
 
 from src.core.enums import FilmSortEnum
-from src.db.elastic import get_elastic
-from src.db.redis import get_redis
 from src.models.film import FilmDC, FilmExtendedDC
 from src.services.field_filters import genre_filter, person_films_filter
 from src.utils import BaseService
@@ -24,15 +22,19 @@ class FilmService(BaseService[FilmDC, FilmExtendedDC]):
     _elastic_index = "movies"
 
     search_field = "title"
-    filters_map = {
+    filters_map: ClassVar[dict[str, Callable]] = {
         "genre": genre_filter,
         "person_id": person_films_filter,
     }
 
 
-@lru_cache()
-def get_film_service(
-    redis: Redis = Depends(get_redis),
-    elastic: AsyncElasticsearch = Depends(get_elastic),
-) -> FilmService:
+@lru_cache
+def _make_film_service(redis, elastic) -> FilmService:
     return FilmService(redis, elastic)
+
+
+def get_film_service(request: Request) -> FilmService:
+    return _make_film_service(
+        request.app.state.redis,
+        request.app.state.elastic,
+    )

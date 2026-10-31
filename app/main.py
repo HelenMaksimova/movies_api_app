@@ -11,7 +11,8 @@ from src.api.v1.genre import router as genre_router
 from src.api.v1.person import router as person_router
 from src.core.config import AppConfigDC
 from src.core.log_settings import LOGGING
-from src.db import elastic, redis
+from src.db.elastic import get_client as get_elastic
+from src.db.redis import get_client as get_redis
 
 app_config = AppConfigDC()
 log_config.dictConfig(LOGGING)
@@ -19,19 +20,21 @@ log_config.dictConfig(LOGGING)
 
 @asynccontextmanager
 async def db_lifespan(app: FastAPI):
-    redis.redis = await redis.get_client(app_config.redis)
-    elastic.elastic = await elastic.get_client(app_config.elastic)
+    app.state.redis = await get_redis(app_config.redis)
+    app.state.elastic = await get_elastic(app_config.elastic)
     logger = getLogger()
 
-    yield
+    try:
+        yield
 
-    if redis.redis:
-        await redis.redis.close()
-        logger.info("[Redis] Client was closed")
+    finally:
+        if app.state.redis:
+            await app.state.redis.close()
+            logger.info("[Redis] Client was closed")
 
-    if elastic.elastic:
-        await elastic.elastic.close()
-        logger.info("[Elastic] Client was closed")
+        if app.state.elastic:
+            await app.state.elastic.close()
+            logger.info("[Elastic] Client was closed")
 
 
 def set_routers(app: FastAPI):

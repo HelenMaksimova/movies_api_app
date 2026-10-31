@@ -1,12 +1,8 @@
 from functools import lru_cache
 
-from elasticsearch import AsyncElasticsearch
-from fastapi import Depends
-from redis.asyncio import Redis
+from fastapi import Request
 
 from src.core.enums import GenreSortEnum
-from src.db.elastic import get_elastic
-from src.db.redis import get_redis
 from src.models.genre import GenreDC, GenreExtendedDC
 from src.utils import BaseService
 
@@ -25,9 +21,13 @@ class GenreService(BaseService[GenreDC, GenreDC]):
     search_field = "name"
 
 
-@lru_cache()
-def get_genre_service(
-    redis: Redis = Depends(get_redis),
-    elastic: AsyncElasticsearch = Depends(get_elastic),
-) -> GenreService:
+@lru_cache
+def _make_genre_service(redis, elastic) -> GenreService:
     return GenreService(redis, elastic)
+
+
+def get_genre_service(request: Request) -> GenreService:
+    return _make_genre_service(
+        request.app.state.redis,
+        request.app.state.elastic,
+    )

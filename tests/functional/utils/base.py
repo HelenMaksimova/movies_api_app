@@ -1,5 +1,5 @@
+from collections.abc import Callable
 from http import HTTPMethod
-from typing import Callable
 
 from aiohttp import ClientSession
 
